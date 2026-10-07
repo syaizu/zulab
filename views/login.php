@@ -21,7 +21,7 @@
                 <i class="fa-solid font-bold fa-flask-vial text-3xl"></i>
             </div>
             <h1 class="text-2xl font-bold tracking-wide">Zulabs</h1>
-            <p class="text-indigo-200 text-sm mt-1">Sistem Informasi Laboratorium Terintegrasi SIMRS Khanza</p>
+            <p class="text-indigo-200 text-sm mt-1">Sistem Otorisasi Laboratorium Terintegrasi SIMRS Khanza</p>
         </div>
         
         <div class="p-8">
@@ -64,7 +64,7 @@
         </div>
 
         <div class="bg-slate-50 py-3 px-6 text-center text-[11px] text-slate-400 border-t border-slate-100">
-            &copy; <?php echo date('Y'); ?> <b>Zulabs</b>. All rights reserved.
+            &copy; <?php echo date('Y'); ?> <b>Zulabs</b> and Tim IT RSPM. All rights reserved.
         </div>
     </div>
 </div>
