@@ -23,24 +23,28 @@ $alertMessage = '';
 
 if ($page === 'login') {
     if (isset($_POST['login_submit'])) {
-        $username = trim($_POST['username']);
-        $password = trim($_POST['password']);
-
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-        $stmt->execute(array($username));
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['kd_dokter'] = isset($user['kd_dokter']) ? $user['kd_dokter'] : '';
-
-            header("Location: index.php?page=dashboard");
-            exit();
+        if (!$pdo) {
+            $alertMessage = "Koneksi ke Server SIMRS Khanza terputus / offline.";
         } else {
-            $alertMessage = "Username atau password salah!";
+            $username = trim($_POST['username']);
+            $password = trim($_POST['password']);
+
+            $stmt = $pdo->prepare("SELECT * FROM rspm_otorisasi_users WHERE username = ?");
+            $stmt->execute(array($username));
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['kd_dokter'] = isset($user['kd_dokter']) ? $user['kd_dokter'] : '';
+
+                header("Location: index.php?page=dashboard");
+                exit();
+            } else {
+                $alertMessage = "Username atau password salah!";
+            }
         }
     }
     
@@ -50,7 +54,7 @@ if ($page === 'login') {
 
 if (isset($_POST['ajax_update_otorisasi']) && $_POST['ajax_update_otorisasi'] == '1') {
     header('Content-Type: application/json');
-    if (!$pdo_sik) {
+    if (!$pdo) {
         echo json_encode(array('status' => 'error', 'message' => 'Database SIMRS Khanza (SIK) tidak terhubung.'));
         exit();
     }
@@ -70,7 +74,7 @@ if (isset($_POST['ajax_update_otorisasi']) && $_POST['ajax_update_otorisasi'] ==
 
             if ($stts_otorisasi === 'Valid') {
                 // Update Otorisasi Master menggunakan Kode Dokter PJ Lab dari periksa_lab
-                $stmtUp = $pdo_sik->prepare("UPDATE rspm_otorisasi r 
+                $stmtUp = $pdo->prepare("UPDATE rspm_otorisasi r 
                     LEFT JOIN periksa_lab pl 
                         ON r.no_rawat = pl.no_rawat 
                        AND r.kd_jenis_prw = pl.kd_jenis_prw 
@@ -83,7 +87,7 @@ if (isset($_POST['ajax_update_otorisasi']) && $_POST['ajax_update_otorisasi'] ==
                 $stmtUp->execute(array($stts_otorisasi, $tglOto, $fallbackDokter, $no_rawat, $tgl_periksa, $jam));
             } else {
                 // Batal Otorisasi Master (Reset)
-                $stmtUp = $pdo_sik->prepare("UPDATE rspm_otorisasi 
+                $stmtUp = $pdo->prepare("UPDATE rspm_otorisasi 
                     SET stts_otorisasi = ?, tgl_otorisasi = NULL, kd_dokter_sppk = NULL
                     WHERE no_rawat = ? AND tgl_periksa = ? AND jam = ?");
                 $stmtUp->execute(array($stts_otorisasi, $no_rawat, $tgl_periksa, $jam));
@@ -97,7 +101,7 @@ if (isset($_POST['ajax_update_otorisasi']) && $_POST['ajax_update_otorisasi'] ==
             $items = json_decode($rawItems, true);
 
             // Ambil Kode Dokter PJ Pemeriksaan khusus paket ini dari periksa_lab
-            $stmtPj = $pdo_sik->prepare("SELECT kd_dokter FROM periksa_lab WHERE no_rawat = ? AND kd_jenis_prw = ? AND tgl_periksa = ? AND jam = ? LIMIT 1");
+            $stmtPj = $pdo->prepare("SELECT kd_dokter FROM periksa_lab WHERE no_rawat = ? AND kd_jenis_prw = ? AND tgl_periksa = ? AND jam = ? LIMIT 1");
             $stmtPj->execute(array($no_rawat, $kd_jenis_prw, $tgl_periksa, $jam));
             $pjDokter = $stmtPj->fetchColumn();
             
@@ -114,7 +118,7 @@ if (isset($_POST['ajax_update_otorisasi']) && $_POST['ajax_update_otorisasi'] ==
                     $tglOto = $is_checked ? date('Y-m-d H:i:s') : null;
                     $dokterOto = $is_checked ? $dokterOtoTarget : null;
 
-                    $stmtUp = $pdo_sik->prepare("UPDATE rspm_otorisasi 
+                    $stmtUp = $pdo->prepare("UPDATE rspm_otorisasi 
                         SET stts_otorisasi = ?, tgl_otorisasi = ?, kd_dokter_sppk = ?, catatan_otorisasi = ?
                         WHERE no_rawat = ? AND tgl_periksa = ? AND jam = ? AND kd_jenis_prw = ? AND id_template = ?");
                     $stmtUp->execute(array($stts, $tglOto, $dokterOto, $catatan, $no_rawat, $tgl_periksa, $jam, $kd_jenis_prw, $id_template));
@@ -135,13 +139,13 @@ if ($page === 'pengaturan_login') {
         $old_password = $_POST['old_password'];
         $new_password = $_POST['new_password'];
 
-        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT password FROM rspm_otorisasi_users WHERE id = ?");
         $stmt->execute(array($_SESSION['user_id']));
         $currUser = $stmt->fetch();
 
         if ($currUser && password_verify($old_password, $currUser['password'])) {
             $new_hash = password_hash($new_password, PASSWORD_BCRYPT);
-            $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $update = $pdo->prepare("UPDATE rspm_otorisasi_users SET password = ? WHERE id = ?");
             $update->execute(array($new_hash, $_SESSION['user_id']));
             $alertMessage = "Password berhasil diperbarui!";
         } else {
@@ -160,21 +164,21 @@ if ($page === 'pengaturan_login') {
         if (!empty($user_id)) {
             if (!empty($password)) {
                 $hashPass = password_hash($password, PASSWORD_BCRYPT);
-                $stmt = $pdo->prepare("UPDATE users SET nama_lengkap = ?, username = ?, role = ?, kd_dokter = ?, password = ? WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE rspm_otorisasi_users SET nama_lengkap = ?, username = ?, role = ?, kd_dokter = ?, password = ? WHERE id = ?");
                 $stmt->execute(array($nama_lengkap, $username, $role, $kd_dokter, $hashPass, $user_id));
             } else {
-                $stmt = $pdo->prepare("UPDATE users SET nama_lengkap = ?, username = ?, role = ?, kd_dokter = ? WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE rspm_otorisasi_users SET nama_lengkap = ?, username = ?, role = ?, kd_dokter = ? WHERE id = ?");
                 $stmt->execute(array($nama_lengkap, $username, $role, $kd_dokter, $user_id));
             }
             $alertMessage = "Data pengguna berhasil diperbarui!";
         } else {
-            $checkUser = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+            $checkUser = $pdo->prepare("SELECT COUNT(*) FROM rspm_otorisasi_users WHERE username = ?");
             $checkUser->execute(array($username));
             if ($checkUser->fetchColumn() > 0) {
                 $alertMessage = "Username '$username' sudah terdaftar!";
             } else {
                 $hashPass = password_hash($password, PASSWORD_BCRYPT);
-                $stmt = $pdo->prepare("INSERT INTO users (nama_lengkap, username, role, kd_dokter, password) VALUES (?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO rspm_otorisasi_users (nama_lengkap, username, role, kd_dokter, password) VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute(array($nama_lengkap, $username, $role, $kd_dokter, $hashPass));
                 $alertMessage = "Pengguna baru berhasil ditambahkan!";
             }
@@ -184,7 +188,7 @@ if ($page === 'pengaturan_login') {
     if (isset($_POST['delete_user']) && $_SESSION['role'] === 'admin') {
         $user_id = $_POST['user_id'];
         if ($user_id != $_SESSION['user_id']) {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+            $stmt = $pdo->prepare("DELETE FROM rspm_otorisasi_users WHERE id = ?");
             $stmt->execute(array($user_id));
             $alertMessage = "Pengguna berhasil dihapus!";
         } else {
@@ -210,30 +214,31 @@ if ($page === 'dashboard') {
     $myAuthCountToday = 0;
     $recentCriticals = array();
     $recentAuths = array();
-    $totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    $totalUsers = 0;
 
-    if ($pdo_sik) {
+    if ($pdo) {
         try {
             $today = date('Y-m-d');
+            $totalUsers = $pdo->query("SELECT COUNT(*) FROM rspm_otorisasi_users")->fetchColumn();
             
             // Stats pasien lab hari ini
-            $totalExamToday = $pdo_sik->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today'")->fetchColumn();
-            $totalPendingToday = $pdo_sik->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Pending'")->fetchColumn();
-            $totalValidToday = $pdo_sik->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Valid'")->fetchColumn();
-            $totalHoldToday = $pdo_sik->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Hold'")->fetchColumn();
-            $totalResampleToday = $pdo_sik->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Re-sample'")->fetchColumn();
+            $totalExamToday = $pdo->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today'")->fetchColumn();
+            $totalPendingToday = $pdo->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Pending'")->fetchColumn();
+            $totalValidToday = $pdo->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Valid'")->fetchColumn();
+            $totalHoldToday = $pdo->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Hold'")->fetchColumn();
+            $totalResampleToday = $pdo->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND stts_otorisasi = 'Re-sample'")->fetchColumn();
             
             // Total Pasien bernilai Kritis hari ini
-            $totalCriticalToday = $pdo_sik->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND (LOWER(keterangan) LIKE '%kritis%' OR LOWER(keterangan) LIKE '%nilai kritis%')")->fetchColumn();
+            $totalCriticalToday = $pdo->query("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE tgl_periksa = '$today' AND (LOWER(keterangan) LIKE '%kritis%' OR LOWER(keterangan) LIKE '%nilai kritis%')")->fetchColumn();
 
             // Total otorisasi yang diselesaikan oleh Sp.PK aktif hari ini
             $activeKdDokter = !empty($_SESSION['kd_dokter']) ? $_SESSION['kd_dokter'] : $_SESSION['username'];
-            $stmtMy = $pdo_sik->prepare("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE DATE(tgl_otorisasi) = ? AND kd_dokter_sppk = ?");
+            $stmtMy = $pdo->prepare("SELECT COUNT(DISTINCT no_rawat) FROM rspm_otorisasi WHERE DATE(tgl_otorisasi) = ? AND kd_dokter_sppk = ?");
             $stmtMy->execute(array($today, $activeKdDokter));
             $myAuthCountToday = $stmtMy->fetchColumn();
 
             // List 5 Pasien Kritis Terbaru Hari Ini
-            $stmtCrit = $pdo_sik->prepare("SELECT DISTINCT d.no_rawat, p.nm_pasien, r.no_rkm_medis, pol.nm_poli, d.jam, d.stts_otorisasi
+            $stmtCrit = $pdo->prepare("SELECT DISTINCT d.no_rawat, p.nm_pasien, r.no_rkm_medis, pol.nm_poli, d.jam, d.stts_otorisasi
                 FROM rspm_otorisasi d
                 LEFT JOIN reg_periksa r ON d.no_rawat = r.no_rawat
                 LEFT JOIN pasien p ON r.no_rkm_medis = p.no_rkm_medis
@@ -245,7 +250,7 @@ if ($page === 'dashboard') {
             $recentCriticals = $stmtCrit->fetchAll();
 
             // List 5 Otorisasi Selesai Terbaru Hari Ini
-            $stmtAuth = $pdo_sik->prepare("SELECT DISTINCT d.no_rawat, p.nm_pasien, r.no_rkm_medis, d.tgl_otorisasi, dok.nm_dokter AS nm_dokter_sppk
+            $stmtAuth = $pdo->prepare("SELECT DISTINCT d.no_rawat, p.nm_pasien, r.no_rkm_medis, d.tgl_otorisasi, dok.nm_dokter AS nm_dokter_sppk
                 FROM rspm_otorisasi d
                 LEFT JOIN reg_periksa r ON d.no_rawat = r.no_rawat
                 LEFT JOIN pasien p ON r.no_rkm_medis = p.no_rkm_medis
@@ -256,7 +261,7 @@ if ($page === 'dashboard') {
             $stmtAuth->execute();
             $recentAuths = $stmtAuth->fetchAll();
         } catch (PDOException $e) {
-            // Silence SIK count error
+            // Silence query error
         }
     }
 
@@ -270,7 +275,7 @@ if ($page === 'dashboard') {
     $exams_sik = array();
     $sik_error = null;
 
-    if ($pdo_sik) {
+    if ($pdo) {
         try {
             // Query JOIN utama termasuk periksa_lab & dokter (dok_pj) untuk Dokter PJ Lab
             $sql = "SELECT d.no_rawat, d.kd_jenis_prw, d.tgl_periksa, d.jam, d.id_template, d.nilai, d.nilai_rujukan, d.keterangan,
@@ -324,7 +329,7 @@ if ($page === 'dashboard') {
 
             $sql .= " ORDER BY d.tgl_periksa DESC, d.jam DESC, d.no_rawat ASC, d.kd_jenis_prw ASC";
 
-            $stmtSik = $pdo_sik->prepare($sql);
+            $stmtSik = $pdo->prepare($sql);
             $stmtSik->execute($params);
             $exams_sik = $stmtSik->fetchAll();
         } catch (PDOException $e) {
@@ -383,13 +388,13 @@ if ($page === 'dashboard') {
 
     require_once __DIR__ . '/views/pemeriksaan_lab.php';
 } elseif ($page === 'pengaturan_login') {
-    $stmtUsers = $pdo->query("SELECT * FROM users ORDER BY id DESC");
+    $stmtUsers = $pdo->query("SELECT * FROM rspm_otorisasi_users ORDER BY id DESC");
     $users = $stmtUsers->fetchAll();
 
     $doctors_khanza = array();
-    if ($pdo_sik) {
+    if ($pdo) {
         try {
-            $stmtDok = $pdo_sik->query("SELECT kd_dokter, nm_dokter FROM dokter WHERE status = '1' ORDER BY nm_dokter ASC");
+            $stmtDok = $pdo->query("SELECT kd_dokter, nm_dokter FROM dokter WHERE status = '1' ORDER BY nm_dokter ASC");
             $doctors_khanza = $stmtDok->fetchAll();
         } catch (PDOException $e) {
             // Silence SIK doctor query error
