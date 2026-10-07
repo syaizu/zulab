@@ -1,5 +1,5 @@
 <footer class="mt-auto py-4 px-6 border-t border-slate-200 bg-white text-center text-xs text-slate-500">
-    <p>&copy; <?php echo date('Y'); ?> <b class="text-slate-700">Zulabs</b>. All rights reserved. Integrated with SIMRS Khanza.</p>
+    <p>&copy; <?php echo date('Y'); ?> <b class="text-slate-700">Zulabs</b> and Tim IT RSPM. All rights reserved. Integrated with SIMRS Khanza.</p>
 </footer>
 
 <script>
