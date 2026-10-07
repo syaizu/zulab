@@ -10,11 +10,11 @@ define('DB_PASS', '');
 define('DB_NAME', 'db_lab_modular');
 
 // Konfigurasi Database Eksternal (SIK SIMRS Khanza Server)
-define('DB_SIK_HOST', '192.168.5.100');
-define('DB_SIK_PORT', '3306');
-define('DB_SIK_USER', 'test-simrs');
-define('DB_SIK_PASS', 'Rsparu123-test');
-define('DB_SIK_NAME', 'test-simrs');
+define('DB_SIK_HOST', 'XXXX');
+define('DB_SIK_PORT', 'XXXX');
+define('DB_SIK_USER', 'XXXX');
+define('DB_SIK_PASS', 'XXX');
+define('DB_SIK_NAME', 'XXX');
 
 $db_driver = 'mysql';
 
